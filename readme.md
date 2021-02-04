@@ -9,7 +9,6 @@ All of the code is in Python 3, written and tested with 3.9.1. The following non
 * flask
 * pytest
 * requests
-* sortedcontainers
 
 ## Summary
 
@@ -73,11 +72,11 @@ In addition to the output of pytest, a results file will be generated in a test_
 
 Here's a non-exhaustive list of improvements that could be made.
 
-* Nothing is optimized for any particular actor, despite the challenge being about Kevin Bacon. In most cases (degree <= 3) this is okay, but you could easily build trees rather than connected graphs with a given actor at the root which should be much faster to query due to having far fewer connections (each actor would only connect to actors who are at depth n - 1 or n + 1 relative to the root - that means they're not connected to *each other* at any given layer, either). You could provide specific APIs for each of these trees, much like there's a Kevin Bacon-specific API currently.
+* Nothing is optimized for any particular actor, despite the challenge being about Kevin Bacon. In most cases (degree <= 3) this is okay, but you could easily build trees rather than connected graphs with a given actor at the root which should be much faster to query due to having far fewer connections (each actor would only connect to actors who are at depth n - 1 or n + 1 relative to the root - that means they're not connected to *each other* at any given layer, either). You could provide specific APIs for each of these trees, much like there's a Kevin Bacon-specific API currently. The gain would be minimal for the common case, though (degree <= 3).
 * As mentioned above, persisting the graphs to files would significantly speed up initialization, at the cost of a little more preprocessing. This is a very good and easy optimization that I am skipping solely for the sake of time, but is obviously doable based on the rest of the code so far.
 * All comparisons are case-sensitive. You should be able to search for "kevin bacon", or "kEvIn BaCoN", if that's your fancy. Simple solution is to lower-case everything, but you'd quickly run into issues with foreign names doing it naively.
 * No input is validated. This is mentioned in a couple of comments, but neither the data nor user input are sanitized. This would not be appropriate in production.
-* The poor cases - degree 4+ - can take an egregiously long time and provide no feedback. This relates to the first bullet point (optimize for individual actors), but it's also about usability. There will always be pathological cases, and we shouldn't just stall without notifying the user for several seconds (let alone 20+).
+* The poor cases - degree 4+ - can take a long time and provide no feedback. This relates to the first bullet point (optimize for individual actors), but it's also about usability. There will always be pathological cases, and we shouldn't just stall without notifying the user for several seconds.
 * No metadata. We can fetch degrees of separation, but a user might care about some of the 'trivia' surrounding connections:
   * which movies and actors connect two actors
   * given the above, the ability to see alternate connection paths

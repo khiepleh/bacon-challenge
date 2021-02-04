@@ -12,6 +12,7 @@ import argparse
 url_bacon  = 'http://127.0.0.1:5000/api/bacon-number'
 url_degree = 'http://127.0.0.1:5000/api/actor-number'
 url_new    = 'http://127.0.0.1:5000/api/movie'
+url_multi  = 'http://127.0.0.1:5000/api/multiple-degrees'
 
 
 def user_loop():
@@ -43,6 +44,10 @@ def file_input(file: str):
 
         elif k == 'new':
             r = requests.post(url_new, json=v)
+            print(r.text)
+
+        elif k == 'multi':
+            r = requests.get(url_multi, json=v)
             print(r.text)
 
 

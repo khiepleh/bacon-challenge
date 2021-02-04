@@ -1,5 +1,3 @@
-from sortedcontainers import SortedList
-
 from typing import Dict, List, Set
 
 import argparse
@@ -72,28 +70,9 @@ def build_connected_graph(actors_path: str) -> Graph:
     return out_graph
 
 
-# Edge weights are always 1 (omitted in practice).
-# SortedGraph = Dict[str, SortedList[str]]
-# Last minute discovery that type aliases work differently in Python 3.9. Just imagine that this one exists.
-
-def sort_graph(graph: Graph):
-    """Convert graph to a SortedGraph.
-
-    SortedGraph = dict[str, SortedList[str]]
-    SortedGraphs still map actors to their first degree connectinons, but SortedLists result in much faster queries.
-    """
-    print('[parse_movies] Sorting graph')
-
-    start = time.time()
-    for actor in graph.keys():
-        graph[actor] = SortedList(graph[actor])
-
-    print('[parse_movies] Sorted graph in {} seconds'.format(time.time() - start))
-
-
 Movies = Dict[str, List[str]]
 
-def new_movies(movies: Movies, graph: Graph):
+def new_movies(movies: Movies, graph: Graph, actors_file: str=None):
     """Add new movies to an existing Graph.
 
     Movies = dict[str, list[str]]
@@ -109,32 +88,6 @@ def new_movies(movies: Movies, graph: Graph):
             except KeyError:
                 graph[actor] = cast_set.copy()
             graph[actor].remove(actor)
-
-
-def new_movies_sorted(movies: Movies, sorted_graph, actors_file: str=None):
-    """Add new movies to an existing SortedGraph.
-
-    Movies = dict[str, list[str]]
-    Movies maps movie titles to lists of actors (i.e. casts). The titles are unused and irrelevant.
-    Note that this function will convert SOME of the values in a regular Graph to SortedLists,
-    which can break processing later.
-
-    actors_file is an optional parameter which specifies a preprocessed actors file to append the
-    new casts to so they get persisted across runs.
-    """
-    print('[parse_movies] Adding new movies to sorted graph')
-
-    for cast in movies.values():
-        cast_set = set(cast)
-        for actor in cast_set:
-            try:
-                # This feels a little sloppy - might even cause slowness with large Movies
-                sorted_graph[actor] = set(sorted_graph[actor])
-                sorted_graph[actor] |= cast_set
-                sorted_graph[actor] = SortedList(sorted_graph[actor])
-            except KeyError:
-                sorted_graph[actor] = SortedList(cast_set.copy())
-            sorted_graph[actor].remove(actor)
 
     if actors_file:
         with open(actors_file, 'a', encoding='utf8') as af:
