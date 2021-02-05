@@ -11,8 +11,8 @@ def verify_graph(jl_file, g_file):
             assert sorted(r[k]) == sorted(v)
 
 
-basic_jl  = 'tests/test_graphs/basic.jsonl'
-basic_gr  = 'tests/test_graphs/basic.graph'
+basic_jl = 'tests/test_graphs/basic.jsonl'
+basic_gr = 'tests/test_graphs/basic.graph'
 linear_jl = 'tests/test_graphs/linear.jsonl'
 linear_gr = 'tests/test_graphs/linear.graph'
 break_jl = 'tests/test_graphs/break_two_way_search.jsonl'
@@ -36,21 +36,13 @@ def test_modify():
     g = build_connected_graph(basic_jl)
 
     new = {
-          'foo' : ['D', 'E', 'F']
-        , 'bar' : ['A', 'E']
-        , 'mux' : ['B', 'F']
-        , 'qaz' : ['A', 'B']
+        'foo': ['D', 'E', 'F'], 'bar': ['A', 'E'], 'mux': ['B', 'F'], 'qaz': ['A', 'B']
     }
 
     new_movies(new, g)
 
     r = {
-          'A' : ['B', 'C', 'E']
-        , 'B' : ['A', 'C', 'F']
-        , 'C' : ['A', 'B']
-        , 'D' : ['E', 'F']
-        , 'E' : ['A', 'D', 'F']
-        , 'F' : ['B', 'D', 'E']
+        'A': ['B', 'C', 'E'], 'B': ['A', 'C', 'F'], 'C': ['A', 'B'], 'D': ['E', 'F'], 'E': ['A', 'D', 'F'], 'F': ['B', 'D', 'E']
     }
 
     for k, v in g.items():

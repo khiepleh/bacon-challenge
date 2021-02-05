@@ -1,4 +1,4 @@
-from graph.parse_movies  import build_connected_graph, new_movies
+from graph.parse_movies import build_connected_graph, new_movies
 from graph.query_degrees import bfs
 
 from os import makedirs
@@ -72,14 +72,14 @@ def test_slow():
     timeit('Maryam Mohamadamini', 'Patcha Poonpiriya', 13)
 
     # An actor who is not connected to the graph... at all!
-    new_movies({'foo':['actor1']}, graph)
+    new_movies({'foo': ['actor1']}, graph)
     timeit('Kevin Bacon', 'actor1', None)
 
 
 # For generating pathological test cases; doesn't technically find the longest possible
 # path, but still finds sufficiently long ones for test cases.
 def max_degree(graph, root):
-    queue   = [(root, 0)]
+    queue = [(root, 0)]
     visited = set(root)
 
     max_depth = 0
