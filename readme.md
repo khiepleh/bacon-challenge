@@ -41,7 +41,7 @@ This will output an actors.jsonl file which will be consumed later. It should ta
 3. Run the server:
 
 ```
-python -m http_api.server
+python -m server.server
 ```
 
 This will take ~10-15 seconds to start up while it builds a graph from the preprocessed data - an unfortunate startup time, but the server is long-lived and an easy improvement would be to persist the graphs to another file.
@@ -51,11 +51,11 @@ Note that your terminal/prompt/etc. will block while the server runs using the a
 4. Run the client:
 
 ```
-python -m http_api.client
+python -m client.client
 
 or
 
-python -m http_api.client -f http_api/client_example.data
+python -m client.client -f client/client_example.data
 ```
 
 Without an input file, the client will repeatedly prompt the user for two actors to determine the degree of separation between. It will ask the server and print the response.
@@ -72,6 +72,8 @@ pytest may not be directly accessible by default, depending on your install sett
 
 In addition to the output of pytest, a results file will be generated in a test_results folder. This is a csv showing how long it took to determine the degree of separation of each pair of actors in the degree tests.
 
+Some of the above (notably, running the server) will create a server log that you can read to verify the requests that were run (including some metadata).
+
 ## Improvements
 
 Here's a non-exhaustive list of improvements that could be made.
@@ -83,3 +85,17 @@ Here's a non-exhaustive list of improvements that could be made.
   * which movies and actors connect two actors
   * given the above, the ability to see alternate connection paths
   * ask how two actors are connected through a third one - e.g. Kevin Bacon and Billy Boyd have a degree of 2, but is there a chain - perhaps of greater degree - that links them via George Clooney or Humphrey Bogart in particular?
+
+## Focus Areas
+
+Here, I highlight what I focused on explicitly:
+
+### Testing and Robustness
+
+In addition to the pytest tests which cover most of the obvious base cases as well as bugs and issues found during development for each of the primary modules (parsing, searching, server), the client allows some more realistic testing from the perspective of a user or other service (via the input file). I verify that everything works, from scratch via a fresh checkout, on both Windows 10 and Ubuntu 20.04 LTS (via the Windows Subsystem for Linux) by following just this readme. The search tests provide basic timing functionality to verify the performance of the search algorithm, and the server provides logging (including datestamp, PID, TID, and unique request IDs) for debugging and verification.
+
+### Usability
+
+The ability to quickly and easily check out the repo and get things working via the readme with no obstacles is important - that first impression is vital for new consumers. The requirements file provides a smooth way for fresh checkouts to get up and running (with fixed versions to minimize the chance of breakage). Additionally, the client provides an easy interface for doing your own manual tests or for writing integration tests via the input file, and could theoretically be provided to an end-user in its current state. In practice, a target user who would use the client rather than integrating with the API should be provided with a friendlier interface like a GUI or web app.
+
+The HTTP API returns detailed enough error information for the client to easily determine what went wrong and why in most cases, as well as some basic documentation at the root to get started. That's not a substitute for real docs, though - actual API documentation would be a prerequisite for shipping this project.
