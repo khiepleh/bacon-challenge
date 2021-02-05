@@ -1,4 +1,4 @@
-from http_api import server
+from server import server
 
 from graph.parse_movies import build_connected_graph
 
@@ -35,10 +35,11 @@ def test_api_doc(client):
     assert j['multiple-degrees']
 
 
-api_bacon     = '/api/bacon-number'
-api_arbitrary = '/api/actor-number'
-api_new       = '/api/movie'
-api_multi     = '/api/multiple-degrees'
+api_root      = '/api'
+api_bacon     = api_root + '/bacon-number'
+api_arbitrary = api_root + '/actor-number'
+api_new       = api_root + '/movie'
+api_multi     = api_root + '/multiple-degrees'
 
 
 def test_bacon_simple(client):
@@ -165,7 +166,7 @@ def test_multi_malformed(client):
 
     assert r.status_code == 400
     assert j['Code']     == -4
-    assert j['Details']  == '0 pairs succeeded: []'
+    assert j['Details']  == '0 pairs succeeded; processing stopped at first failure: []'
 
 
 def test_multi_malformed_some_okay(client):
@@ -175,7 +176,7 @@ def test_multi_malformed_some_okay(client):
 
     assert r.status_code == 400
     assert j['Code']     == -4
-    assert j['Details']  == '2 pairs succeeded: {}'.format(json.dumps([['foo', 'bar', -3], ['mux', 'qaz', -3]]))
+    assert j['Details']  == '2 pairs succeeded; processing stopped at first failure: {}'.format(json.dumps([['foo', 'bar', -3], ['mux', 'qaz', -3]]))
 
 
 def test_multi_invalid_json_simple(client):
@@ -234,3 +235,9 @@ def test_new_invalid_json_complex(client):
     assert r.status_code == 400
     assert j['Code']     == -3
     assert j['Details']  == 'Parsing failed at pos 33, lineno 1, colno 34'
+
+
+def test_api_not_exist(client):
+    r = client.get('/api/spacey-number')
+
+    assert r.status_code == 404

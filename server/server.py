@@ -2,60 +2,55 @@ from graph.query_degrees import bfs
 
 from graph.parse_movies import build_connected_graph, new_movies
 
-from http_api import bacon_errors
+from server import bacon_errors
 
 import flask
 
+from os import getpid
+
+import datetime
 import json
+import threading
+
+class AtomicId():
+    def __init__(self):
+        self.value = 0
+        self.lock = threading.Lock()
+
+    def increment(self):
+        with self.lock:
+            self.value += 1
+            return self.value
 
 
 app = flask.Flask(__name__)
 
 
 g_actors_file = './preprocessed/actors.jsonl'
-g_cache       = {}
 g_graph       = None
+g_req_id      = AtomicId()
+g_pid         = getpid()
+g_log_file    = None
+
+
+def server_log(id: int, msg: str):
+    global g_pid
+    global g_log_file
+
+    print('[{}][{:<5}:{:<5}][server][0x{:0=16x}] {}'
+        .format(
+              datetime.datetime.now()
+            , g_pid
+            , threading.get_ident()
+            , id
+            , msg)
+        , file=g_log_file)
 
 
 def get_degree(root: str, target: str):
-    """Get the degree of separation between root and target. Checks and updates the cache.
+    """Get the degree of separation between root and target.
     """
-    global g_cache
-
-    try:
-        root_cache = g_cache[root]
-    except KeyError:
-        g_cache[root] = {}
-        root_cache    = g_cache[root]
-
-    try:
-        return root_cache[target]
-    except KeyError:
-        global g_graph
-        degree             = bfs(g_graph, root, target)
-        root_cache[target] = degree
-
-    try:
-        target_cache = g_cache[target]
-    except KeyError:
-        g_cache[target] = {}
-        target_cache    = g_cache[target]
-
-    if degree is None:
-        target_cache[root] = None
-        return degree
-
-    elif degree >= 0 or degree == -3:
-        target_cache[root] = degree
-
-    # -1 means the root doesn't exist, -2 means the target doesn't exist
-    elif degree == -1:
-        target_cache[root] = -2
-
-    elif degree == -2:
-        target_cache[root] = -1
-
-    return degree
+    return bfs(g_graph, root, target)
 
 
 @app.route('/api', methods=['GET'])
@@ -102,15 +97,25 @@ def api_bacon():
     """Accepts one parameter - actor - and returns the bacon number for said actor.
     """
     try:
+        req_id = g_req_id.increment()
+        server_log(req_id, 'Processing bacon-number GET request')
+
         try:
             target = flask.request.args['actor']
         except KeyError:
             body            = bacon_errors.missing_params
             body['Details'] = 'Missing parameter "actor"'
+
+            server_log(req_id, '400: ' + body['Details'])
+
             return body, 400
+
+        server_log(req_id, 'Querying Bacon number for {}'.format(target))
 
         root = 'Kevin Bacon'
         degree = get_degree(root, target)
+
+        server_log(req_id, 'Got Bacon number of {} for {}'.format(degree, target))
 
         body                = {}
         body['Results']     = [(root, target, degree)]
@@ -118,6 +123,7 @@ def api_bacon():
         return body, 200
 
     except:
+        server_log(req_id, 'Unknown error processing bacon-number')
         return bacon_errors.unknown_error, 500
 
 
@@ -126,11 +132,17 @@ def api_arbitrary():
     """Accepts a root and target parameter and returns the degree of separation between them.
     """
     try:
+        req_id = g_req_id.increment()
+        server_log(req_id, 'Processing actor-number GET request')
+
         try:
             root = flask.request.args['root']
         except KeyError:
             body            = bacon_errors.missing_params
             body['Details'] = 'Missing parameter "root"'
+
+            server_log(req_id, '400: ' + body['Details'])
+
             return body, 400
 
         try:
@@ -138,13 +150,24 @@ def api_arbitrary():
         except KeyError:
             body            = bacon_errors.missing_params
             body['Details'] = 'Missing parameter "target"'
+
+            server_log(req_id, '400: ' + body['Details'])
+
             return body, 400
 
+        server_log(req_id, 'Querying degree for ({}, {})'.format(root, target))
+
         degree = get_degree(root, target)
+
+        server_log(req_id, 'Got degree ({}, {}, {})'.format(root, target, degree))
 
         body            = {}
         body['Results'] = [(root, target, degree)]
 
+        # These are not errors - querying for actors that don't exist is considered valid
+        # input and "we couldn't find a degree for X" is a valid response. Neither the
+        # client nor server did anything wrong so a 4xx or 5xx seems misleading. This
+        # applies to the other APIs which query degrees, too.
         if degree == -1:
             body['Description'] = '"{}" is not in the dataset'.format(root)
 
@@ -160,6 +183,7 @@ def api_arbitrary():
         return body, 200
 
     except:
+        server_log(req_id, 'Unknown error processing actor-number')
         return bacon_errors.unknown_error, 500
 
 
@@ -172,14 +196,22 @@ def api_arbitrary_multi():
     which pairs failed.
     """
     try:
+        req_id = g_req_id.increment()
+        server_log(req_id, 'Processing multiple-degrees GET request')
+
         try:
             pairs = json.loads(flask.request.data)
         except json.JSONDecodeError as e:
             body            = bacon_errors.invalid_json
             body['Details'] = 'Parsing failed at pos {}, lineno {}, colno {}'.format(e.pos, e.lineno, e.colno)
+
+            server_log(req_id, '400: ' + body['Details'])
+
             return body, 400
 
         if not len(pairs):
+            server_log(req_id, 'No pairs provided')
+
             body                = {}
             body['Results']     = []
             body['Description'] = 'No pairs provided'
@@ -189,10 +221,17 @@ def api_arbitrary_multi():
         try:
             for root, target in pairs:
                 successes.append((root, target, get_degree(root, target)))
+                server_log(req_id, 'Found {}'.format(successes[-1]))
+
         except ValueError:
             body            = bacon_errors.multi_failed
-            body['Details'] = '{} pairs succeeded: {}'.format(len(successes), json.dumps(successes))
+            body['Details'] = '{} pairs succeeded; processing stopped at first failure: {}'.format(len(successes), json.dumps(successes))
+
+            server_log(req_id, '400: ' + body['Details'])
+
             return body, 400
+
+        server_log(req_id, 'Found degrees for all pairs successfully: {}'.format(successes))
 
         body                = {}
         body['Results']     = successes
@@ -200,6 +239,7 @@ def api_arbitrary_multi():
         return body, 200
 
     except:
+        server_log(req_id, 'Unknown error processing multiple-degrees')
         return bacon_errors.unknown_error, 500
 
 
@@ -207,22 +247,29 @@ def api_arbitrary_multi():
 def api_new_movie():
     """Accepts a JSON map of movies -> casts which will be persisted across requests and runs.
 
-    The persistence is on the actors file post-processing - the original datset is unmodified.
+    The persistence is on the actors file post-processing - the original dataset is unmodified.
     """
     try:
+        req_id = g_req_id.increment()
+        server_log(req_id, 'Processing movie POST request')
+
         try:
             movies = json.loads(flask.request.data)
         except json.JSONDecodeError as e:
             body = bacon_errors.invalid_json
             body['Details'] = 'Parsing failed at pos {}, lineno {}, colno {}'.format(e.pos, e.lineno, e.colno)
+
+            server_log(req_id, '400: ' + body['Details'])
+
             return body, 400
+
+        server_log(req_id, 'Adding new movies: {}'.format(movies))
 
         global g_actors_file
         global g_graph
         new_movies(movies, g_graph, g_actors_file)
 
-        global g_cache
-        g_cache.clear()
+        server_log(req_id, 'Successfully added new movies')
 
         body                = {}
         body['Results']     = []
@@ -230,19 +277,18 @@ def api_new_movie():
         return body, 201
 
     except:
+        server_log(req_id, 'Unknown error processing movie')
         return bacon_errors.unknown_error, 500
 
 
 if __name__ == '__main__':
     try:
-        print('[server] Building connected graph; may take ~5-10 seconds.')
+        server_log(0, 'Building connected graph; may take ~5-10 seconds')
         g_graph = build_connected_graph(g_actors_file)
 
     except:
-        print('[server] Unable to build graph; exiting.')
-        exit(-1)
+        server_log(0, 'Unable to build graph; exiting')
+        raise RuntimeError('Unable to build graph')
 
-    app.run()
-
-    # The server is not very safe and should generally not be exposed to the public.
-    #app.run(host='0.0.0.0')
+    with open('server.{}.log'.format(g_pid), 'w') as g_log_file:
+        app.run()
