@@ -1,12 +1,14 @@
 from graph.parse_movies import build_connected_graph, new_movies
 
+from ast import literal_eval
+
 import operator
 
 
 def verify_graph(jl_file, g_file):
     g = build_connected_graph(jl_file)
     with open(g_file) as gf:
-        r = eval(gf.read())
+        r = literal_eval(gf.read())
         for k, v in g.items():
             assert sorted(r[k]) == sorted(v)
 

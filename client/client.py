@@ -1,5 +1,7 @@
 import requests
 
+from ast import literal_eval
+
 import argparse
 
 
@@ -32,7 +34,7 @@ def user_loop():
 
 def file_input(file: str):
     with open(file, 'r', encoding='utf8') as f:
-        data = eval(f.read())
+        data = literal_eval(f.read())
 
     for k, v in data.items():
         if k == 'bacon':

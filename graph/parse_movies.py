@@ -1,4 +1,5 @@
 from typing import Dict, List, Set
+from ast import literal_eval
 
 import argparse
 import csv
@@ -28,9 +29,7 @@ def parse(csv_path: str, out_path: str):
                 if i == 1:
                     continue
 
-                # This particular dataset is already a Python dict in string form, which we'll take advantage of.
-                # In general, eval is a dangerous idea on un-sanitized data.
-                cast = eval(row[0])
+                cast = literal_eval(row[0])
                 names = []
                 for actor in cast:
                     names.append(actor['name'])
@@ -59,7 +58,7 @@ def build_connected_graph(actors_path: str) -> Graph:
     start = time.time()
     out_graph = {}
     for cast in open(actors_path, 'r', encoding='utf8'):
-        cast_set = set(eval(cast))
+        cast_set = set(literal_eval(cast))
         for actor in cast_set:
             try:
                 out_graph[actor] |= cast_set
