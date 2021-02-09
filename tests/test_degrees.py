@@ -1,5 +1,5 @@
-from graph.parse_movies  import build_connected_graph, sort_graph, new_movies_sorted
-from graph.query_degrees import bfs_pre_sorted
+from graph.parse_movies import build_connected_graph, new_movies
+from graph.query_degrees import bfs
 
 from os import makedirs
 
@@ -18,7 +18,6 @@ class Timer:
 
 
 graph = build_connected_graph('preprocessed/actors.jsonl')
-sort_graph(graph)
 
 try:
     makedirs('test_results')
@@ -31,9 +30,9 @@ with open(log_file, 'w', newline='') as lf:
     w.writerow(['Root', 'Target', 'Time'])
 
 
-def timeit(root, target, cond):
+def timeit(root, target, cond, g=graph):
     with Timer() as t:
-        assert bfs_pre_sorted(graph, root, target) == cond
+        assert bfs(g, root, target) == cond
 
     with open(log_file, 'a', newline='') as lf:
         w = csv.writer(lf)
@@ -69,7 +68,33 @@ def test_slow():
     timeit('Kevin Bacon', 'Johnny Weissmuller', 3)
     timeit('Kevin Bacon', 'Sota Fukushi', 4)
     timeit('Douglas Fairbanks', 'Sota Fukushi', 4)
+    timeit('Kevin Bacon', 'Patcha Poonpiriya', 8)
+    timeit('Maryam Mohamadamini', 'Patcha Poonpiriya', 13)
 
     # An actor who is not connected to the graph... at all!
-    new_movies_sorted({'foo':['actor1']}, graph)
+    new_movies({'foo': ['actor1']}, graph)
     timeit('Kevin Bacon', 'actor1', None)
+
+
+# For generating pathological test cases; doesn't technically find the longest possible
+# path, but still finds sufficiently long ones for test cases.
+def max_degree(graph, root):
+    queue = [(root, 0)]
+    visited = set(root)
+
+    max_depth = 0
+    while queue:
+        actor, depth = queue.pop(0)
+        depth += 1
+        assert max_depth <= depth
+        if depth > max_depth:
+            max_depth = depth
+            print(actor, depth)
+
+        neighbours = graph[actor]
+        for neighbour in neighbours:
+            if neighbour not in visited:
+                visited.add(neighbour)
+                queue.append((neighbour, depth))
+
+    return max_depth

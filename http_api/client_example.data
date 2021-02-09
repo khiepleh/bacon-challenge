@@ -1,8 +1,0 @@
-{
-      'bacon'  : 'Brad Pitt'
-    , 'degree' : ('Brad Pitt', 'George Clooney')
-    , 'new'    : {
-          'movie1' : ['actor1', 'actor2']
-        , 'movie2' : ['actor2', 'actor3']
-    }
-}

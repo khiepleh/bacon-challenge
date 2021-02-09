@@ -1,7 +1,5 @@
 from graph.parse_movies import Graph
 
-from sortedcontainers import SortedList
-
 
 def base_cases(graph: Graph, root: str, target: str):
     """Checks the base cases for a graph search: root == target and root and/or target don't exist in the graph.
@@ -25,84 +23,90 @@ def base_cases(graph: Graph, root: str, target: str):
     a = check_presence(root)
     b = check_presence(target)
 
-    if not a and not b: return -3
-    if not b:           return -2
-    if not a:           return -1
+    if not a and not b:
+        return -3
+    if not b:
+        return -2
+    if not a:
+        return -1
 
     return 1
 
 
 def bfs(graph: Graph, root: str, target: str):
-    """DEPRECATED: A super basic breadth-first-search using Python builtins. Very slow."""
-
+    """Perform two sided BFS to find the shortest path between root and target.
+    """
     base = base_cases(graph, root, target)
-    if base <= 0: return base
+    if base <= 0:
+        return base
 
-    queue   = [(root, 0)]
-    visited = [root]
+    # The queues are for enforcing visitation order.
+    # The dicts are for quickly checking the other queue for intersections and
+    # subsequently fetching the corresponding depth because of their constant time access.
+    queue_root = [(root, 0)]
+    dict_root = {root: 0}
 
-    while queue:
-        curr_actor, depth = queue.pop(0)
-        depth += 1
+    queue_target = [(target, 0)]
+    dict_target = {target: 0}
 
-        for neighbour in graph[curr_actor]:
-            if neighbour == target:
+    visited = set([root, target])
+
+    def check_neighbours(neighbours: set, depth: int, dest: str, q_src: list, d_src: dict, check: dict):
+        best = None
+        for neighbour in neighbours:
+            if neighbour == dest:
                 return depth
 
-            if neighbour not in visited:
-                visited.append(neighbour)
-                queue.append((neighbour, depth))
+            # Check if there's an intersection - i.e. the other BFS has already queued up
+            # the neighbour we're currently visiting. Still need to check the other
+            # neighbours to ensure the optimal solution.
+            if neighbour in check.keys():
+                length = check[neighbour] + depth
+                if best is None or best > length:
+                    best = length
 
-
-def bfs_with_sort(graph: Graph, root: str, target: str):
-    """DEPRECATED: A breadth-first-search which sorts actor lists to improve individual search times.
-
-    This is much faster than pure BFS, but still notably slower than using a pre-sorted Graph (SortedGraph).
-    """
-    base = base_cases(graph, root, target)
-    if base <= 0: return base
-
-    queue   = [(root, 0)]
-    visited = SortedList([root])
-
-    while queue:
-        curr_actor, depth = queue.pop(0)
-        depth += 1
-
-        neighbours = SortedList(graph[curr_actor])
-
-        if target in neighbours:
-            return depth
-
-        for neighbour in neighbours:
             if neighbour not in visited:
                 visited.add(neighbour)
-                queue.append((neighbour, depth))
+                q_src.append((neighbour, depth))
+                d_src[neighbour] = depth
 
+        return best
 
-def bfs_pre_sorted(graph, root: str, target: str):
-    """Do a breadth-first-search on graph, starting at root and ending at target. Return the depth (i.e. length of path from root to target).
+    while queue_root and queue_target:
+        best = None
 
-    Makes use of sortedcontainers.SortedList for speed - it's notably faster this way.
-    """
-    base = base_cases(graph, root, target)
-    if base <= 0: return base
+        orig_depth = queue_root[0][1]
+        next_depth = orig_depth
 
-    queue   = [(root, 0)]
-    visited = SortedList([root])
+        # The inner loops are required to find the optimal path - see the test cases for
+        # an example which can return a sub-optimal depth without this logic.
+        while orig_depth == next_depth:
+            actor, depth = queue_root.pop(0)
+            depth += 1
+            check = check_neighbours(
+                graph[actor], depth, target, queue_root, dict_root, dict_target)
+            if check is not None:
+                best = check if best is None else min(check, best)
 
-    while queue:
-        curr_actor, depth = queue.pop(0)
-        depth += 1
+            try:
+                next_depth = queue_root[0][1]
+            except IndexError:
+                break
 
-        neighbours = graph[curr_actor]
+        orig_depth = queue_target[0][1]
+        next_depth = orig_depth
+        while orig_depth == next_depth:
+            actor, depth = queue_target.pop(0)
+            depth += 1
+            check = check_neighbours(
+                graph[actor], depth, root, queue_target, dict_target, dict_root)
+            if check is not None:
+                best = check if best is None else min(check, best)
 
-        if target in neighbours:
-            return depth
+            try:
+                next_depth = queue_target[0][1]
+            except IndexError:
+                break
 
-        for neighbour in neighbours:
-            if neighbour not in visited:
-                visited.add(neighbour)
-                queue.append((neighbour, depth))
-
-    # The horror! Callers need to handle "None", as well.
+        if best is not None:
+            return best

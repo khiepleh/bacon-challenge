@@ -1,0 +1,11 @@
+{
+      'bacon'  : 'Brad Pitt'
+    , 'degree' : ('Brad Pitt', 'George Clooney')
+    , 'new'    : {
+          'movie1' : ['actor1', 'actor2']
+        , 'movie2' : ['actor2', 'actor3']}
+    , 'multi' : [
+          ('Ed Harris', 'Russell Crowe')
+        , ('Bryan Cranston', 'Aaron Paul')
+        , ('Bryan Cranston', 'Gerard Butler')]
+}

@@ -6,3 +6,4 @@ preprocessed/
 test_results/
 
 *.zip
+*.log
